@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Таймер</string>
+    <string name="shared_unknown_error">Белгісіз қате орын алды</string>
+    <string name="shared_copied">Көшірілді</string>
+    <string name="shared_retry">Қайталау</string>
+    <string name="shared_something_went_wrong">Бірдеңе дұрыс болмады</string>
+    <string name="shared_max_char">Таңбалардың максималды саны: %1$d</string>
+    <string name="language_picker_title">Тілді таңдаңыз</string>
+    <string name="language_picker_language_ru">Русский</string>
+    <string name="language_picker_language_kz">Қазақша</string>
+    <string name="language_picker_language_en">English</string>
+    <string name="language_picker_language_changed_message">Тіл өзгертілді</string>
+</resources>
