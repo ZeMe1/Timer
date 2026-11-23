@@ -2,7 +2,6 @@ package kz.zeme.timer.core.ui.extensions
 
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Color
@@ -13,7 +12,7 @@ import kz.zeme.timer.core.res.theme.TimerTheme
 fun Modifier.shimmer(shape: Shape = RectangleShape): Modifier = composed {
     shimmer(
         backgroundColor = TimerTheme.colors.mainShimmer,
-        shimmerColor = remember { Color(color = 0xFF272727) },
+        shimmerColor = if (TimerTheme.isDarkTheme) TimerTheme.colors.buttonSecondary else TimerTheme.colors.basicDark,
         shape = shape,
     )
 }

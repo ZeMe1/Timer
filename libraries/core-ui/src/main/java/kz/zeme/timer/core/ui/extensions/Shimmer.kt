@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -41,7 +40,7 @@ fun TextStyle.shimmer(
 @Composable
 fun shimmerBrush(
     backgroundColor: Color = TimerTheme.colors.mainShimmer,
-    shimmerColor: Color = remember { Color(color = 0xFF272727) },
+    shimmerColor: Color = if (TimerTheme.isDarkTheme) TimerTheme.colors.buttonSecondary else TimerTheme.colors.basicDark,
     durationMs: Int = 800,
     startOffset: Offset = Offset(0f, 0f),
 ): Brush = shimmerBrush(

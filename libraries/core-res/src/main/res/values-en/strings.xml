@@ -6,9 +6,76 @@
     <string name="shared_retry">Retry</string>
     <string name="shared_something_went_wrong">Something went wrong</string>
     <string name="shared_max_char">Maximum character count: %1$d</string>
+
     <string name="language_picker_title">Select language</string>
     <string name="language_picker_language_ru">Русский</string>
     <string name="language_picker_language_kz">Қазақша</string>
     <string name="language_picker_language_en">English</string>
     <string name="language_picker_language_changed_message">Language changed</string>
+
+    <string name="theme_picker_title">Select theme</string>
+    <string name="theme_picker_dark">Dark</string>
+    <string name="theme_picker_light">Light</string>
+    <string name="theme_picker_system">System</string>
+    <string name="theme_picker_changed_message">Theme updated</string>
+
+    <string name="tab_stopwatch">Stopwatch</string>
+    <string name="tab_timer">Timer</string>
+    <string name="tab_world_clock">World Clock</string>
+
+    <string name="timer_hours_short">h</string>
+    <string name="timer_minutes_short">m</string>
+    <string name="timer_seconds_short">s</string>
+    <string name="timer_start">Start</string>
+    <string name="timer_pause">Pause</string>
+    <string name="timer_resume">Resume</string>
+    <string name="timer_reset">Reset</string>
+    <string name="timer_done">Done</string>
+    <string name="timer_repeat">Repeat</string>
+    <string name="timer_time_up">Time is up</string>
+    <string name="timer_paused">Paused</string>
+    <string name="timer_ends_at">Ends at %1$s</string>
+
+    <string name="stopwatch_lap">Lap</string>
+    <string name="stopwatch_lap_item">Lap %1$s</string>
+    <string name="stopwatch_lap_live">Lap %1$s · %2$s</string>
+
+    <string name="world_clock_add_city">Add city</string>
+    <string name="world_clock_search_city">Search city</string>
+    <string name="world_clock_city_added">City added</string>
+    <string name="world_clock_today">Today</string>
+    <string name="world_clock_tomorrow">Tomorrow</string>
+    <string name="world_clock_yesterday">Yesterday</string>
+    <string name="world_clock_offset_format">%1$s, %2$s h</string>
+    <string name="world_clock_empty_search">No cities found</string>
+    <string name="world_clock_empty_cities">Add a city</string>
+
+    <string name="city_almaty">Almaty</string>
+    <string name="city_astana">Astana</string>
+    <string name="city_london">London</string>
+    <string name="city_new_york">New York</string>
+    <string name="city_tokyo">Tokyo</string>
+    <string name="city_dubai">Dubai</string>
+    <string name="city_paris">Paris</string>
+    <string name="city_berlin">Berlin</string>
+    <string name="city_istanbul">Istanbul</string>
+    <string name="city_seoul">Seoul</string>
+    <string name="city_singapore">Singapore</string>
+    <string name="city_sydney">Sydney</string>
+    <string name="city_los_angeles">Los Angeles</string>
+    <string name="city_chicago">Chicago</string>
+    <string name="city_toronto">Toronto</string>
+    <string name="city_moscow">Moscow</string>
+    <string name="city_tashkent">Tashkent</string>
+    <string name="city_bishkek">Bishkek</string>
+    <string name="city_hong_kong">Hong Kong</string>
+    <string name="city_mumbai">Mumbai</string>
+    <string name="city_bangkok">Bangkok</string>
+    <string name="city_rome">Rome</string>
+    <string name="city_madrid">Madrid</string>
+    <string name="city_amsterdam">Amsterdam</string>
+
+    <string name="timer_notification_channel">Timer</string>
+    <string name="timer_notification_running">Remaining: %1$s</string>
+    <string name="timer_notification_finished">Time is up</string>
 </resources>

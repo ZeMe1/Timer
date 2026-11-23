@@ -7,7 +7,11 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toDrawable
 import kotlin.system.exitProcess
+
+private const val DARK_WINDOW_BG = 0xFF010101.toInt()
+private const val LIGHT_WINDOW_BG = 0xFFF6F6F8.toInt()
 
 fun Activity.isPermissionGranted(
     vararg permission: String,
@@ -28,15 +32,20 @@ fun Activity.closeApp() {
     exitProcess(0)
 }
 
-fun Activity.enableEdgeToEdge() {
-    val systemBarStyle =
-        if (isTimer()) SystemBarStyle.dark(Color.TRANSPARENT)
-        else SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
+fun Activity.enableEdgeToEdge(isDark: Boolean = true) {
+    val systemBarStyle = when {
+        !isTimer() -> SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
+        isDark -> SystemBarStyle.dark(Color.TRANSPARENT)
+        else -> SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+    }
 
     (this as? AppCompatActivity)?.enableEdgeToEdge(
         statusBarStyle = systemBarStyle,
         navigationBarStyle = systemBarStyle,
     )
+
+    val windowBackgroundColor = if (isDark) DARK_WINDOW_BG else LIGHT_WINDOW_BG
+    window?.setBackgroundDrawable(windowBackgroundColor.toDrawable())
 }
 
 fun Activity.isTimer(): Boolean =

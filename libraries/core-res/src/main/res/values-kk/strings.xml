@@ -6,9 +6,76 @@
     <string name="shared_retry">Қайталау</string>
     <string name="shared_something_went_wrong">Бірдеңе дұрыс болмады</string>
     <string name="shared_max_char">Таңбалардың максималды саны: %1$d</string>
+
     <string name="language_picker_title">Тілді таңдаңыз</string>
     <string name="language_picker_language_ru">Русский</string>
     <string name="language_picker_language_kz">Қазақша</string>
     <string name="language_picker_language_en">English</string>
     <string name="language_picker_language_changed_message">Тіл өзгертілді</string>
+
+    <string name="theme_picker_title">Тақырыпты таңдаңыз</string>
+    <string name="theme_picker_dark">Қараңғы</string>
+    <string name="theme_picker_light">Ашық</string>
+    <string name="theme_picker_system">Жүйелік</string>
+    <string name="theme_picker_changed_message">Тақырып жаңартылды</string>
+
+    <string name="tab_stopwatch">Секундомер</string>
+    <string name="tab_timer">Таймер</string>
+    <string name="tab_world_clock">Әлемдік уақыт</string>
+
+    <string name="timer_hours_short">сағ</string>
+    <string name="timer_minutes_short">мин</string>
+    <string name="timer_seconds_short">сек</string>
+    <string name="timer_start">Бастау</string>
+    <string name="timer_pause">Кідірту</string>
+    <string name="timer_resume">Жалғастыру</string>
+    <string name="timer_reset">Тазалау</string>
+    <string name="timer_done">Дайын</string>
+    <string name="timer_repeat">Қайталау</string>
+    <string name="timer_time_up">Уақыт аяқталды</string>
+    <string name="timer_paused">Кідіртілді</string>
+    <string name="timer_ends_at">%1$s дейін</string>
+
+    <string name="stopwatch_lap">Айналым</string>
+    <string name="stopwatch_lap_item">Айналым %1$s</string>
+    <string name="stopwatch_lap_live">Айналым %1$s · %2$s</string>
+
+    <string name="world_clock_add_city">Қала қосу</string>
+    <string name="world_clock_search_city">Қаланы іздеу</string>
+    <string name="world_clock_city_added">Қала қосылды</string>
+    <string name="world_clock_today">Бүгін</string>
+    <string name="world_clock_tomorrow">Ертең</string>
+    <string name="world_clock_yesterday">Кеше</string>
+    <string name="world_clock_offset_format">%1$s, %2$s сағ</string>
+    <string name="world_clock_empty_search">Қалалар табылмады</string>
+    <string name="world_clock_empty_cities">Қала қосыңыз</string>
+
+    <string name="city_almaty">Алматы</string>
+    <string name="city_astana">Астана</string>
+    <string name="city_london">Лондон</string>
+    <string name="city_new_york">Нью-Йорк</string>
+    <string name="city_tokyo">Токио</string>
+    <string name="city_dubai">Дубай</string>
+    <string name="city_paris">Париж</string>
+    <string name="city_berlin">Берлин</string>
+    <string name="city_istanbul">Ыстамбұл</string>
+    <string name="city_seoul">Сеул</string>
+    <string name="city_singapore">Сингапур</string>
+    <string name="city_sydney">Сидней</string>
+    <string name="city_los_angeles">Лос-Анджелес</string>
+    <string name="city_chicago">Чикаго</string>
+    <string name="city_toronto">Торонто</string>
+    <string name="city_moscow">Мәскеу</string>
+    <string name="city_tashkent">Ташкент</string>
+    <string name="city_bishkek">Бішкек</string>
+    <string name="city_hong_kong">Гонконг</string>
+    <string name="city_mumbai">Мумбай</string>
+    <string name="city_bangkok">Бангкок</string>
+    <string name="city_rome">Рим</string>
+    <string name="city_madrid">Мадрид</string>
+    <string name="city_amsterdam">Амстердам</string>
+
+    <string name="timer_notification_channel">Таймер</string>
+    <string name="timer_notification_running">Қалды: %1$s</string>
+    <string name="timer_notification_finished">Уақыт аяқталды</string>
 </resources>
