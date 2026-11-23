@@ -50,31 +50,6 @@
     <string name="world_clock_empty_search">Қалалар табылмады</string>
     <string name="world_clock_empty_cities">Қала қосыңыз</string>
 
-    <string name="city_almaty">Алматы</string>
-    <string name="city_astana">Астана</string>
-    <string name="city_london">Лондон</string>
-    <string name="city_new_york">Нью-Йорк</string>
-    <string name="city_tokyo">Токио</string>
-    <string name="city_dubai">Дубай</string>
-    <string name="city_paris">Париж</string>
-    <string name="city_berlin">Берлин</string>
-    <string name="city_istanbul">Ыстамбұл</string>
-    <string name="city_seoul">Сеул</string>
-    <string name="city_singapore">Сингапур</string>
-    <string name="city_sydney">Сидней</string>
-    <string name="city_los_angeles">Лос-Анджелес</string>
-    <string name="city_chicago">Чикаго</string>
-    <string name="city_toronto">Торонто</string>
-    <string name="city_moscow">Мәскеу</string>
-    <string name="city_tashkent">Ташкент</string>
-    <string name="city_bishkek">Бішкек</string>
-    <string name="city_hong_kong">Гонконг</string>
-    <string name="city_mumbai">Мумбай</string>
-    <string name="city_bangkok">Бангкок</string>
-    <string name="city_rome">Рим</string>
-    <string name="city_madrid">Мадрид</string>
-    <string name="city_amsterdam">Амстердам</string>
-
     <string name="timer_notification_channel">Таймер</string>
     <string name="timer_notification_running">Қалды: %1$s</string>
     <string name="timer_notification_finished">Уақыт аяқталды</string>
