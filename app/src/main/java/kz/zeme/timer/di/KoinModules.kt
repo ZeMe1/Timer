@@ -12,6 +12,7 @@ import kz.zeme.timer.core.world.clock.di.coreWorldClockModule
 import kz.zeme.timer.core.world.clock.view.di.coreWorldClockViewModule
 import kz.zeme.timer.stopwatch.di.stopwatchModule
 import kz.zeme.timer.timer.di.timerModule
+import kz.zeme.timer.world.clock.di.worldClockModule
 import org.koin.core.module.Module
 
 open class KoinModules {
@@ -29,6 +30,7 @@ open class KoinModules {
         coreWorldClockViewModule,
         stopwatchModule,
         timerModule,
+        worldClockModule,
         appModule,
     )
 }

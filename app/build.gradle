@@ -75,6 +75,7 @@ dependencies {
     implementation project(':core-world-clock-view')
     implementation project(':stopwatch')
     implementation project(':timer')
+    implementation project(':world-clock')
 
     coreLibraryDesugaring appLibs.desugarJdk
 
