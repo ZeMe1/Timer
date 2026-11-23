@@ -69,6 +69,7 @@ dependencies {
     implementation project(':core-locale-view')
     implementation project(':core-theme')
     implementation project(':core-theme-view')
+    implementation project(':core-stopwatch')
 
     coreLibraryDesugaring appLibs.desugarJdk
 

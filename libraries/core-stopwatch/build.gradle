@@ -1,0 +1,14 @@
+apply from: "$project.rootDir/gradle_scripts/java-version-android-library.gradle"
+
+android {
+    namespace = 'kz.zeme.timer.core.stopwatch'
+}
+
+dependencies {
+    implementation project(':core')
+    implementation project(':core-di')
+    implementation project(':core-error')
+
+    implementation appTooling.bundles.coroutines
+    implementation appLibs.bundles.koin
+}
