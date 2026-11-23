@@ -14,17 +14,21 @@ import kz.zeme.timer.core.navigation.Navigator
 import kz.zeme.timer.core.navigation.extensions.putRedirect
 import kz.zeme.timer.core.theme.view.presentation.navigation.ThemePickerNavigation
 import kz.zeme.timer.core.theme.view.presentation.navigation.ThemePickerRouter
+import kz.zeme.timer.core.world.clock.view.presentation.navigation.CityPickerNavigation
+import kz.zeme.timer.core.world.clock.view.presentation.navigation.CityPickerRouter
 
 class AppGlobalNavigator(
     private val activityProvider: ActivityProvider,
     private val languagePickerRouter: LanguagePickerRouter,
     private val themePickerRouter: ThemePickerRouter,
+    private val cityPickerRouter: CityPickerRouter,
 ) : ExternalModulesNavigator {
 
     override fun navigate(navigation: Navigator.Navigation) = when (navigation) {
         is BaseNavigation.ShowMain -> showMain(navigation)
         is LanguagePickerNavigation.OpenLanguagePicker -> openLanguagePicker()
         is ThemePickerNavigation.OpenThemePicker -> openThemePicker()
+        is CityPickerNavigation.OpenCityPicker -> openCityPicker()
         is BaseNavigation.ShowToast.Message -> showToast(navigation)
         is BaseNavigation.ShowToast.MessageErr -> showErrorToast(navigation)
         is BaseNavigation.ShowToast.MessageRes -> showResToast(navigation)
@@ -67,6 +71,17 @@ class AppGlobalNavigator(
 
         themePickerRouter
             .getThemePickerFragment()
+            .show(fm, tag)
+    }
+
+    private fun openCityPicker() {
+        val fm = activityProvider.currentActivity?.supportFragmentManager ?: return
+        val tag = CityPickerRouter.TAG_CITY_PICKER
+
+        if (fm.isShown(tag)) return
+
+        cityPickerRouter
+            .getCityPickerFragment()
             .show(fm, tag)
     }
 

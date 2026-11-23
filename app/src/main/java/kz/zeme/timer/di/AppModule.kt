@@ -46,6 +46,7 @@ val appModule = module {
             activityProvider = get(),
             languagePickerRouter = get(),
             themePickerRouter = get(),
+            cityPickerRouter = get(),
         )
     }.binds(
         ExternalModulesNavigator::class,
