@@ -16,4 +16,7 @@ dependencies {
     implementation appLibs.androidx.room
     implementation appLibs.androidx.room.ktx
     ksp appLibs.androidx.room.compiler
+
+    testImplementation appLibs.junit
+    testImplementation appTooling.kotlinx.coroutines.test
 }

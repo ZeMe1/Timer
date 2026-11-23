@@ -1,6 +1,7 @@
 package kz.zeme.timer.core.theme.di
 
 import android.content.Context
+import android.content.res.Configuration
 import kz.zeme.timer.core.di.extensions.binds
 import kz.zeme.timer.core.theme.data.DefaultThemeRepository
 import kz.zeme.timer.core.theme.data.ThemeLocalDataSource
@@ -22,8 +23,12 @@ val coreThemeModule = module {
     }
 
     single {
+        val context = androidContext()
         DefaultThemeRepository(
-            context = androidContext(),
+            isSystemDarkProvider = {
+                val flags = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+                flags == Configuration.UI_MODE_NIGHT_YES
+            },
             activityProvider = get(),
             themeLocalDataSource = get(),
             themeApplier = get(),

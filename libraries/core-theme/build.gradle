@@ -13,4 +13,8 @@ dependencies {
     implementation appTooling.bundles.coroutines
     implementation appLibs.androidx.core.ktx
     implementation appLibs.bundles.koin
+
+    testImplementation appLibs.junit
+    testImplementation appLibs.androidx.appcompat
+    testImplementation appTooling.kotlinx.coroutines.test
 }

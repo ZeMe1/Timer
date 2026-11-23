@@ -1,8 +1,6 @@
 package kz.zeme.timer.core.theme.data
 
 import android.app.Activity
-import android.content.Context
-import android.content.res.Configuration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,7 +13,7 @@ import kz.zeme.timer.core.theme.domain.ThemeOption
 import kz.zeme.timer.core.theme.domain.ThemeRepository
 
 class DefaultThemeRepository(
-    private val context: Context,
+    private val isSystemDarkProvider: () -> Boolean,
     private val activityProvider: ActivityProvider,
     private val themeLocalDataSource: ThemeLocalDataSource,
     private val themeApplier: ThemeApplier,
@@ -67,11 +65,6 @@ class DefaultThemeRepository(
     private fun resolveIsDark(mode: AppThemeMode): Boolean = when (mode) {
         AppThemeMode.Dark -> true
         AppThemeMode.Light -> false
-        AppThemeMode.System -> isSystemDarkTheme()
-    }
-
-    private fun isSystemDarkTheme(): Boolean {
-        val nightModeFlags = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        return nightModeFlags == Configuration.UI_MODE_NIGHT_YES
+        AppThemeMode.System -> isSystemDarkProvider()
     }
 }
