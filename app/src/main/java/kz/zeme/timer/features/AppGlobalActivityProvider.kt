@@ -5,9 +5,9 @@ import android.app.Application
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import kz.zeme.timer.core.activity.ActivityProvider
-import kz.zeme.timer.core.activity.extensions.enableEdgeToEdge
 import kz.zeme.timer.core.activity.extensions.setLocale
 import kz.zeme.timer.core.locale.domain.LocaleRepository
+import kz.zeme.timer.core.theme.domain.ThemeRepository
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -17,11 +17,13 @@ open class AppGlobalActivityProvider :
     KoinComponent {
 
     private val localeRepository: LocaleRepository by inject()
+    private val themeRepository: ThemeRepository by inject()
 
     override var currentActivity: AppCompatActivity? = null
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
         currentActivity = activity as? AppCompatActivity
+        themeRepository.applyCurrentTheme(activity)
         activity.setLocale(localeRepository.getSelectedLocale())
     }
 
@@ -31,7 +33,7 @@ open class AppGlobalActivityProvider :
 
     override fun onActivityResumed(activity: Activity) {
         currentActivity = activity as? AppCompatActivity
-        currentActivity?.enableEdgeToEdge()
+        themeRepository.applyCurrentTheme(activity)
         activity.setLocale(localeRepository.getSelectedLocale())
     }
 

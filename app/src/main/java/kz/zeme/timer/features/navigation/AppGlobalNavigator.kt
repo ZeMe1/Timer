@@ -12,15 +12,19 @@ import kz.zeme.timer.core.navigation.BaseNavigation
 import kz.zeme.timer.core.navigation.ExternalModulesNavigator
 import kz.zeme.timer.core.navigation.Navigator
 import kz.zeme.timer.core.navigation.extensions.putRedirect
+import kz.zeme.timer.core.theme.view.presentation.navigation.ThemePickerNavigation
+import kz.zeme.timer.core.theme.view.presentation.navigation.ThemePickerRouter
 
 class AppGlobalNavigator(
     private val activityProvider: ActivityProvider,
     private val languagePickerRouter: LanguagePickerRouter,
+    private val themePickerRouter: ThemePickerRouter,
 ) : ExternalModulesNavigator {
 
     override fun navigate(navigation: Navigator.Navigation) = when (navigation) {
         is BaseNavigation.ShowMain -> showMain(navigation)
         is LanguagePickerNavigation.OpenLanguagePicker -> openLanguagePicker()
+        is ThemePickerNavigation.OpenThemePicker -> openThemePicker()
         is BaseNavigation.ShowToast.Message -> showToast(navigation)
         is BaseNavigation.ShowToast.MessageErr -> showErrorToast(navigation)
         is BaseNavigation.ShowToast.MessageRes -> showResToast(navigation)
@@ -52,6 +56,17 @@ class AppGlobalNavigator(
 
         languagePickerRouter
             .getLanguagePickerFragment()
+            .show(fm, tag)
+    }
+
+    private fun openThemePicker() {
+        val fm = activityProvider.currentActivity?.supportFragmentManager ?: return
+        val tag = ThemePickerRouter.TAG_THEME_PICKER
+
+        if (fm.isShown(tag)) return
+
+        themePickerRouter
+            .getThemePickerFragment()
             .show(fm, tag)
     }
 
