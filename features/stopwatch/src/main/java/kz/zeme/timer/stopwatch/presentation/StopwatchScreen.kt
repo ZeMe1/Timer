@@ -1,5 +1,19 @@
 package kz.zeme.timer.stopwatch.presentation
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,18 +32,21 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,10 +69,17 @@ import kz.zeme.timer.core.res.theme.primary
 import kz.zeme.timer.core.res.theme.secondary
 import kz.zeme.timer.core.stopwatch.domain.StopwatchStatus
 import kz.zeme.timer.core.ui.components.DefaultErrorScreen
+import kz.zeme.timer.core.ui.extensions.compose.clickableHaptic
 import kz.zeme.timer.core.ui.extensions.shimmer
 import kz.zeme.timer.stopwatch.presentation.StopwatchState.StopwatchLapItem
 
 private const val TABULAR_NUMS_FEATURE = "tnum"
+private const val LAPS_EXPAND_DURATION_MS = 320
+private const val LAP_ITEM_FADE_DURATION_MS = 220
+private const val LAP_CAPTION_ENTER_MS = 220
+private const val LAP_CAPTION_EXIT_MS = 150
+private const val ACTIONS_ENTER_DURATION_MS = 220
+private const val ACTIONS_EXIT_DURATION_MS = 160
 
 @Composable
 internal fun StopwatchScreen(
@@ -165,33 +189,81 @@ private fun StopwatchContent(
     controller: StopwatchController,
     lazyListState: LazyListState,
 ) {
+    val hasLaps = data.laps.isNotEmpty()
+    val expandProgress by animateFloatAsState(
+        targetValue = if (hasLaps) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = LAPS_EXPAND_DURATION_MS,
+            easing = FastOutSlowInEasing,
+        ),
+        label = "stopwatchLapsExpand",
+    )
+    val dialTopPadding by animateDpAsState(
+        targetValue = if (hasLaps) 28.dp else 0.dp,
+        animationSpec = tween(
+            durationMillis = LAPS_EXPAND_DURATION_MS,
+            easing = FastOutSlowInEasing,
+        ),
+        label = "stopwatchDialTopPadding",
+    )
+    val dialBottomPadding by animateDpAsState(
+        targetValue = if (hasLaps) 16.dp else 0.dp,
+        animationSpec = tween(
+            durationMillis = LAPS_EXPAND_DURATION_MS,
+            easing = FastOutSlowInEasing,
+        ),
+        label = "stopwatchDialBottomPadding",
+    )
+    val slideOffsetPx = with(LocalDensity.current) { 24.dp.toPx() }
+    var renderedLaps by remember { mutableStateOf(data.laps) }
+
+    if (hasLaps) renderedLaps = data.laps
+    else if (expandProgress <= 0.01f && renderedLaps.isNotEmpty()) renderedLaps = persistentListOf()
+
+    val topWeight = (1f - expandProgress) * 0.5f
+    val bottomWeight = 1f - topWeight
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(TimerTheme.colors.mainBg)
             .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 20.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        val dialModifier =
-            if (data.laps.isEmpty()) Modifier.weight(1f).fillMaxWidth()
-            else Modifier.fillMaxWidth().padding(top = 28.dp, bottom = 16.dp)
-
-        StopwatchDial(
-            modifier = dialModifier,
-            mainTime = data.mainTime,
-            centiseconds = data.centiseconds,
-            currentLapNumber = data.currentLapNumber,
-            currentLapTime = data.currentLapTime,
-        )
-
-        if (data.laps.isNotEmpty()) StopwatchLapsList(
+        Column(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 16.dp),
-            laps = data.laps,
-            lazyListState = lazyListState,
-        )
+                .fillMaxWidth(),
+        ) {
+            if (topWeight > 0.001f) Spacer(modifier = Modifier.weight(topWeight))
+
+            StopwatchDial(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = dialTopPadding, bottom = dialBottomPadding),
+                mainTime = data.mainTime,
+                centiseconds = data.centiseconds,
+                currentLapNumber = data.currentLapNumber,
+                currentLapTime = data.currentLapTime,
+            )
+
+            Box(
+                modifier = Modifier
+                    .weight(bottomWeight)
+                    .fillMaxWidth(),
+            ) {
+                if (expandProgress > 0.01f && renderedLaps.isNotEmpty()) StopwatchLapsList(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 8.dp, bottom = 16.dp)
+                        .graphicsLayer {
+                            alpha = expandProgress
+                            translationY = (1f - expandProgress) * slideOffsetPx
+                        },
+                    laps = renderedLaps,
+                    lazyListState = lazyListState,
+                )
+            }
+        }
 
         StopwatchActionsBar(
             status = data.status,
@@ -208,6 +280,15 @@ private fun StopwatchDial(
     currentLapTime: String?,
     modifier: Modifier = Modifier,
 ) {
+    val hasLapCaption = currentLapNumber != null && currentLapTime != null
+    var lastLapNumber by remember { mutableStateOf(currentLapNumber) }
+    var lastLapTime by remember { mutableStateOf(currentLapTime) }
+
+    if (hasLapCaption) {
+        lastLapNumber = currentLapNumber
+        lastLapTime = currentLapTime
+    }
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -247,19 +328,38 @@ private fun StopwatchDial(
                 .heightIn(min = 18.dp),
             contentAlignment = Alignment.Center,
         ) {
-            if (currentLapNumber != null && currentLapTime != null) Text(
-                text = stringResource(
-                    R.string.stopwatch_lap_live,
-                    currentLapNumber,
-                    currentLapTime,
-                ),
-                style = TimerTheme.typography.bodySmall.secondary().copy(
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    fontFeatureSettings = TABULAR_NUMS_FEATURE,
-                ),
+            StopwatchLapCaption(
+                visible = hasLapCaption,
+                lapNumber = lastLapNumber,
+                lapTime = lastLapTime,
             )
         }
+    }
+}
+
+@Composable
+private fun StopwatchLapCaption(
+    visible: Boolean,
+    lapNumber: String?,
+    lapTime: String?,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(LAP_CAPTION_ENTER_MS, easing = FastOutSlowInEasing)),
+        exit = fadeOut(tween(LAP_CAPTION_EXIT_MS, easing = FastOutSlowInEasing)),
+    ) {
+        if (lapNumber != null && lapTime != null) Text(
+            text = stringResource(
+                R.string.stopwatch_lap_live,
+                lapNumber,
+                lapTime,
+            ),
+            style = TimerTheme.typography.bodySmall.secondary().copy(
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+                fontFeatureSettings = TABULAR_NUMS_FEATURE,
+            ),
+        )
     }
 }
 
@@ -269,6 +369,12 @@ private fun StopwatchLapsList(
     lazyListState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
+    val latestLapNumber = laps.firstOrNull()?.number
+    LaunchedEffect(latestLapNumber) {
+        if (latestLapNumber != null && lazyListState.firstVisibleItemIndex > 0)
+            lazyListState.animateScrollToItem(0)
+    }
+
     Column(modifier = modifier) {
         HorizontalDivider(
             color = TimerTheme.colors.buttonDisabled.copy(alpha = 0.5f),
@@ -290,11 +396,25 @@ private fun LazyListScope.stopwatchLapsSection(
         items = laps,
         key = { it.number },
     ) { lap ->
-        StopwatchLapRow(lap = lap)
-        HorizontalDivider(
-            color = TimerTheme.colors.buttonDisabled.copy(alpha = 0.5f),
-            thickness = 1.dp,
-        )
+        Column(
+            modifier = Modifier.animateItem(
+                fadeInSpec = tween(
+                    durationMillis = LAP_ITEM_FADE_DURATION_MS,
+                    easing = FastOutSlowInEasing,
+                ),
+                placementSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                fadeOutSpec = tween(
+                    durationMillis = LAP_ITEM_FADE_DURATION_MS,
+                    easing = FastOutSlowInEasing,
+                ),
+            ),
+        ) {
+            StopwatchLapRow(lap = lap)
+            HorizontalDivider(
+                color = TimerTheme.colors.buttonDisabled.copy(alpha = 0.5f),
+                thickness = 1.dp,
+            )
+        }
     }
 }
 
@@ -337,51 +457,72 @@ private fun StopwatchActionsBar(
     controller: StopwatchController,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    AnimatedContent(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        when (status) {
-            StopwatchStatus.Idle -> StopwatchActionButton(
-                modifier = Modifier.weight(1f),
-                text = stringResource(R.string.timer_start),
-                containerColor = TimerTheme.colors.textPrimary,
-                contentColor = TimerTheme.colors.mainBg,
-                onClick = controller::onStartClick,
-            )
-
-            StopwatchStatus.Running -> {
-                StopwatchActionButton(
+        targetState = status,
+        transitionSpec = {
+            (
+                fadeIn(tween(ACTIONS_ENTER_DURATION_MS, easing = FastOutSlowInEasing)) +
+                    scaleIn(
+                        initialScale = 0.96f,
+                        animationSpec = tween(ACTIONS_ENTER_DURATION_MS, easing = FastOutSlowInEasing),
+                    )
+                ) togetherWith (
+                fadeOut(tween(ACTIONS_EXIT_DURATION_MS, easing = FastOutSlowInEasing)) +
+                    scaleOut(
+                        targetScale = 0.96f,
+                        animationSpec = tween(ACTIONS_EXIT_DURATION_MS, easing = FastOutSlowInEasing),
+                    )
+                ) using SizeTransform(clip = false)
+        },
+        label = "stopwatchActionsTransition",
+    ) { targetStatus ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            when (targetStatus) {
+                StopwatchStatus.Idle -> StopwatchActionButton(
                     modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.stopwatch_lap),
-                    containerColor = TimerTheme.colors.buttonSecondary,
-                    contentColor = TimerTheme.colors.textPrimary,
-                    onClick = controller::onLapClick,
-                )
-                StopwatchActionButton(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.timer_pause),
-                    containerColor = TimerTheme.colors.buttonPrimary,
-                    contentColor = TimerTheme.colors.textPrimary,
-                    onClick = controller::onPauseClick,
-                )
-            }
-
-            StopwatchStatus.Paused -> {
-                StopwatchActionButton(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.timer_reset),
-                    containerColor = TimerTheme.colors.buttonSecondary,
-                    contentColor = TimerTheme.colors.textPrimary,
-                    onClick = controller::onResetClick,
-                )
-                StopwatchActionButton(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.timer_resume),
+                    text = stringResource(R.string.timer_start),
                     containerColor = TimerTheme.colors.textPrimary,
                     contentColor = TimerTheme.colors.mainBg,
-                    onClick = controller::onResumeClick,
+                    onClick = controller::onStartClick,
                 )
+
+                StopwatchStatus.Running -> {
+                    StopwatchActionButton(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(R.string.stopwatch_lap),
+                        containerColor = TimerTheme.colors.buttonSecondary,
+                        contentColor = TimerTheme.colors.textPrimary,
+                        onClick = controller::onLapClick,
+                    )
+                    StopwatchActionButton(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(R.string.timer_pause),
+                        containerColor = TimerTheme.colors.buttonPrimary,
+                        contentColor = TimerTheme.colors.textPrimary,
+                        onClick = controller::onPauseClick,
+                    )
+                }
+
+                StopwatchStatus.Paused -> {
+                    StopwatchActionButton(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(R.string.timer_reset),
+                        containerColor = TimerTheme.colors.buttonSecondary,
+                        contentColor = TimerTheme.colors.textPrimary,
+                        onClick = controller::onResetClick,
+                    )
+                    StopwatchActionButton(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(R.string.timer_resume),
+                        containerColor = TimerTheme.colors.textPrimary,
+                        contentColor = TimerTheme.colors.mainBg,
+                        onClick = controller::onResumeClick,
+                    )
+                }
             }
         }
     }
@@ -395,23 +536,18 @@ private fun StopwatchActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val haptic = LocalHapticFeedback.current
-    Button(
-        modifier = modifier.height(54.dp),
-        onClick = {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            onClick()
-        },
-        shape = RoundedCornerShape(14.dp),
-        elevation = null,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor,
-            contentColor = contentColor,
-        ),
+    Box(
+        modifier = modifier
+            .height(54.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(containerColor)
+            .clickableHaptic(onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
             style = TimerTheme.typography.bodyLarge.copy(
+                color = contentColor,
                 fontWeight = FontWeight.SemiBold,
             ),
         )
