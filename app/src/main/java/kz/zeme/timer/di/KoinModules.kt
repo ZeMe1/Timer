@@ -6,6 +6,7 @@ import kz.zeme.timer.core.navigation.di.coreNavigationModule
 import kz.zeme.timer.core.stopwatch.di.coreStopwatchModule
 import kz.zeme.timer.core.theme.di.coreThemeModule
 import kz.zeme.timer.core.theme.view.di.coreThemeViewModule
+import kz.zeme.timer.core.timer.di.coreTimerModule
 import kz.zeme.timer.core.ui.di.coreUiModule
 import org.koin.core.module.Module
 
@@ -19,6 +20,7 @@ open class KoinModules {
         coreThemeModule,
         coreThemeViewModule,
         coreStopwatchModule,
+        coreTimerModule,
         appModule,
     )
 }

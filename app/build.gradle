@@ -70,6 +70,7 @@ dependencies {
     implementation project(':core-theme')
     implementation project(':core-theme-view')
     implementation project(':core-stopwatch')
+    implementation project(':core-timer')
 
     coreLibraryDesugaring appLibs.desugarJdk
 

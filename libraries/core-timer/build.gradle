@@ -1,0 +1,16 @@
+apply from: "$project.rootDir/gradle_scripts/java-version-android-library.gradle"
+
+android {
+    namespace = 'kz.zeme.timer.core.timer'
+}
+
+dependencies {
+    implementation project(':core')
+    implementation project(':core-di')
+    implementation project(':core-error')
+    implementation project(':core-activity')
+
+    implementation appTooling.bundles.coroutines
+    implementation appLibs.androidx.core.ktx
+    implementation appLibs.bundles.koin
+}
