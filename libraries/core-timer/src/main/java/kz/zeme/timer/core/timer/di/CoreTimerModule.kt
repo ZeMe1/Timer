@@ -6,12 +6,14 @@ import kz.zeme.timer.core.timer.data.DefaultTimerRepository
 import kz.zeme.timer.core.timer.data.TimerCountdownEngine
 import kz.zeme.timer.core.timer.domain.TimerAlertManager
 import kz.zeme.timer.core.timer.domain.TimerRepository
+import kz.zeme.timer.core.timer.domain.TimerTimeFormatter
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 val coreTimerModule = module {
 
     factory { TimerCountdownEngine() }
+    factory { TimerTimeFormatter() }
 
     single {
         DefaultTimerAlertManager(
