@@ -1,7 +1,6 @@
 package kz.zeme.timer.core.stopwatch.data
 
 import android.os.SystemClock
-import java.util.concurrent.atomic.AtomicReference
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,21 +12,16 @@ import kz.zeme.timer.core.stopwatch.domain.StopwatchRepository
 import kz.zeme.timer.core.stopwatch.domain.StopwatchState
 import kz.zeme.timer.core.stopwatch.domain.StopwatchStatus
 
-private const val MAX_LAPS = 999
-
 class DefaultStopwatchRepository(
     private val elapsedRealtimeProvider: () -> Long = SystemClock::elapsedRealtime,
 ) : StopwatchRepository {
 
-    private data class EngineState(
-        val status: StopwatchStatus = StopwatchStatus.Idle,
-        val accumulatedElapsedMs: Long = 0L,
-        val startedAtRealtimeMs: Long = 0L,
-        val lastLapTotalMs: Long = 0L,
-        val laps: PersistentList<StopwatchLap> = persistentListOf(),
-    )
+    private var status: StopwatchStatus = StopwatchStatus.Idle
+    private var accumulatedElapsedMs: Long = 0L
+    private var startedAtRealtimeMs: Long = 0L
+    private var lastLapTotalMs: Long = 0L
+    private var laps: PersistentList<StopwatchLap> = persistentListOf()
 
-    private val engineState = AtomicReference(EngineState())
     private val _state = MutableStateFlow(StopwatchState())
     private val _isRunning = MutableStateFlow(false)
 
@@ -35,86 +29,60 @@ class DefaultStopwatchRepository(
     override val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
     override fun getElapsed(): StopwatchElapsed {
-        val current = engineState.get()
-        val elapsedMs = calculateElapsedMs(current, elapsedRealtimeProvider())
-        val currentLapElapsedMs = (elapsedMs - current.lastLapTotalMs).coerceAtLeast(0L)
+        val elapsedMs = currentElapsedMs()
 
         return StopwatchElapsed(
             elapsedMs = elapsedMs,
-            currentLapElapsedMs = currentLapElapsedMs,
+            currentLapElapsedMs = (elapsedMs - lastLapTotalMs).coerceAtLeast(0L),
         )
     }
 
     override fun start() {
-        val now = elapsedRealtimeProvider()
-        val updated = engineState.updateAndGet { current ->
-            if (current.status == StopwatchStatus.Running) current
-            else current.copy(
-                status = StopwatchStatus.Running,
-                startedAtRealtimeMs = now,
-            )
-        }
+        if (status == StopwatchStatus.Running) return
 
-        publish(updated)
+        status = StopwatchStatus.Running
+        startedAtRealtimeMs = elapsedRealtimeProvider()
+        publish()
     }
 
     override fun pause() {
-        val now = elapsedRealtimeProvider()
-        val updated = engineState.updateAndGet { current ->
-            if (current.status != StopwatchStatus.Running) current
-            else current.copy(
-                status = StopwatchStatus.Paused,
-                accumulatedElapsedMs = calculateElapsedMs(current, now),
-            )
-        }
+        if (status != StopwatchStatus.Running) return
 
-        publish(updated)
+        accumulatedElapsedMs = currentElapsedMs()
+        status = StopwatchStatus.Paused
+        publish()
     }
 
     override fun reset() {
-        val updated = EngineState()
-        engineState.set(updated)
-        publish(updated)
+        status = StopwatchStatus.Idle
+        accumulatedElapsedMs = 0L
+        startedAtRealtimeMs = 0L
+        lastLapTotalMs = 0L
+        laps = persistentListOf()
+        publish()
     }
 
     override fun addLap() {
-        val now = elapsedRealtimeProvider()
-        val updated = engineState.updateAndGet { current ->
-            if (current.status != StopwatchStatus.Running || current.laps.size >= MAX_LAPS) current
-            else {
-                val totalMs = calculateElapsedMs(current, now)
-                val deltaMs = (totalMs - current.lastLapTotalMs).coerceAtLeast(0L)
-                val newLap = StopwatchLap(
-                    number = current.laps.size + 1,
-                    deltaMs = deltaMs,
-                    totalMs = totalMs,
-                )
+        if (status != StopwatchStatus.Running) return
 
-                current.copy(
-                    lastLapTotalMs = totalMs,
-                    laps = current.laps.add(newLap),
-                )
-            }
-        }
-
-        publish(updated)
-    }
-
-    private fun publish(engine: EngineState) {
-        _state.value = StopwatchState(
-            status = engine.status,
-            laps = engine.laps,
+        val totalMs = currentElapsedMs()
+        val lap = StopwatchLap(
+            number = laps.size + 1,
+            deltaMs = (totalMs - lastLapTotalMs).coerceAtLeast(0L),
+            totalMs = totalMs,
         )
-        _isRunning.value = engine.status == StopwatchStatus.Running
+
+        lastLapTotalMs = totalMs
+        laps = laps.add(lap)
+        publish()
     }
 
-    private fun calculateElapsedMs(
-        engine: EngineState,
-        nowRealtimeMs: Long,
-    ): Long {
-        if (engine.status != StopwatchStatus.Running) return engine.accumulatedElapsedMs
+    private fun currentElapsedMs(): Long =
+        if (status != StopwatchStatus.Running) accumulatedElapsedMs
+        else accumulatedElapsedMs + (elapsedRealtimeProvider() - startedAtRealtimeMs).coerceAtLeast(0L)
 
-        val delta = (nowRealtimeMs - engine.startedAtRealtimeMs).coerceAtLeast(0L)
-        return engine.accumulatedElapsedMs + delta
+    private fun publish() {
+        _state.value = StopwatchState(status = status, laps = laps)
+        _isRunning.value = status == StopwatchStatus.Running
     }
 }

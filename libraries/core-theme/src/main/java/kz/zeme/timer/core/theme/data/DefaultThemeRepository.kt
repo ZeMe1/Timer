@@ -27,23 +27,14 @@ class DefaultThemeRepository(
 
     override suspend fun getThemes(): Response<List<ThemeOption>> {
         val selectedMode = themeLocalDataSource.getSelectedThemeMode()
+        val options = AppThemeMode.entries.map { mode ->
+            ThemeOption(
+                mode = mode,
+                isSelected = mode == selectedMode,
+            )
+        }
 
-        return Response.Success(
-            listOf(
-                ThemeOption(
-                    mode = AppThemeMode.Dark,
-                    isSelected = selectedMode == AppThemeMode.Dark,
-                ),
-                ThemeOption(
-                    mode = AppThemeMode.Light,
-                    isSelected = selectedMode == AppThemeMode.Light,
-                ),
-                ThemeOption(
-                    mode = AppThemeMode.System,
-                    isSelected = selectedMode == AppThemeMode.System,
-                ),
-            ),
-        )
+        return Response.Success(options)
     }
 
     override suspend fun saveSelectedTheme(mode: AppThemeMode): Response<Unit> {
@@ -57,9 +48,8 @@ class DefaultThemeRepository(
         themeLocalDataSource.getSelectedThemeMode()
 
     override fun applyCurrentTheme(activity: Activity?) {
-        val mode = themeLocalDataSource.getSelectedThemeMode()
         applyMode(
-            mode = mode,
+            mode = themeLocalDataSource.getSelectedThemeMode(),
             activity = activity ?: activityProvider.currentActivity,
         )
     }
