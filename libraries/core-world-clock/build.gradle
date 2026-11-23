@@ -1,0 +1,19 @@
+apply from: "$project.rootDir/gradle_scripts/java-version-android-library.gradle"
+apply plugin: 'com.google.devtools.ksp'
+
+android {
+    namespace = 'kz.zeme.timer.core.world.clock'
+}
+
+dependencies {
+    implementation project(':core')
+    implementation project(':core-di')
+    implementation project(':core-error')
+    implementation project(':core-locale')
+
+    implementation appTooling.bundles.coroutines
+    implementation appLibs.bundles.koin
+    implementation appLibs.androidx.room
+    implementation appLibs.androidx.room.ktx
+    ksp appLibs.androidx.room.compiler
+}
