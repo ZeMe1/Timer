@@ -19,6 +19,7 @@ import kz.zeme.timer.core.timer.domain.TimerState as DomainTimerState
 import kz.zeme.timer.core.timer.domain.TimerStatus
 import kz.zeme.timer.core.timer.domain.TimerTimeFormatter
 import kz.zeme.timer.timer.presentation.TimerState.WheelColumn
+import kz.zeme.timer.timer.presentation.navigation.TimerNavigation
 
 private const val TICK_INTERVAL_MS = 100L
 private const val HOURS_COUNT = TimerDuration.MAX_HOURS + 1
@@ -70,7 +71,10 @@ open class TimerVM(
         )
     }
 
-    override fun onStartClick() = timerRepository.start()
+    override fun onStartClick() {
+        _navigation.value = TimerNavigation.RequestNotificationPermission
+        timerRepository.start()
+    }
 
     override fun onPauseClick() = timerRepository.pause()
 

@@ -13,12 +13,14 @@ import kotlinx.coroutines.launch
 import kz.zeme.timer.core.timer.domain.TimerAlertManager
 import kz.zeme.timer.core.timer.domain.TimerRemaining
 import kz.zeme.timer.core.timer.domain.TimerRepository
+import kz.zeme.timer.core.timer.domain.TimerServiceController
 import kz.zeme.timer.core.timer.domain.TimerState
 import kz.zeme.timer.core.timer.domain.TimerStatus
 
 class DefaultTimerRepository(
     private val engine: TimerCountdownEngine,
     private val alertManager: TimerAlertManager,
+    private val serviceController: TimerServiceController,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : TimerRepository {
 
@@ -45,6 +47,7 @@ class DefaultTimerRepository(
     override fun start() {
         val delayMs = engine.start() ?: return
         publish()
+        serviceController.start()
         scheduleCompletion(delayMs)
     }
 
@@ -60,6 +63,7 @@ class DefaultTimerRepository(
         if (delayMs <= 0L) finishCountdown()
         else {
             publish()
+            serviceController.start()
             scheduleCompletion(delayMs)
         }
     }
@@ -69,6 +73,7 @@ class DefaultTimerRepository(
         alertManager.stopAlert()
         engine.reset()
         publish()
+        serviceController.stop()
     }
 
     override fun repeat() {
@@ -78,10 +83,12 @@ class DefaultTimerRepository(
         if (delayMs == null) {
             engine.reset()
             publish()
+            serviceController.stop()
             return
         }
 
         publish()
+        serviceController.start()
         scheduleCompletion(delayMs)
     }
 

@@ -9,8 +9,12 @@ dependencies {
     implementation project(':core-di')
     implementation project(':core-error')
     implementation project(':core-activity')
+    implementation project(':core-res')
 
     implementation appTooling.bundles.coroutines
     implementation appLibs.androidx.core.ktx
     implementation appLibs.bundles.koin
+
+    testImplementation appLibs.junit
+    testImplementation appTooling.kotlinx.coroutines.test
 }
