@@ -36,8 +36,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,7 +52,6 @@ import kz.zeme.timer.core.res.theme.TimerTheme
 import kz.zeme.timer.core.res.theme.primary
 import kz.zeme.timer.core.ui.components.DefaultErrorScreen
 import kz.zeme.timer.core.ui.extensions.compose.clickableHaptic
-import kz.zeme.timer.core.ui.extensions.compose.clickableWithoutRipple
 import kz.zeme.timer.core.ui.extensions.shimmer
 
 private const val LIVE_DOT_PULSE_HALF_DURATION_MS = 700
@@ -364,17 +361,13 @@ private fun BottomBarTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val haptic = LocalHapticFeedback.current
     val contentColor =
         if (isSelected) TimerTheme.colors.textPrimary
         else TimerTheme.colors.textSecondary
 
     Column(
         modifier = modifier
-            .clickableWithoutRipple {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onClick()
-            }
+            .clickableHaptic(onClick = onClick)
             .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),

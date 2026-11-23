@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,6 +26,7 @@ import kz.zeme.timer.core.res.theme.TimerTheme
 import kz.zeme.timer.core.res.theme.bold
 import kz.zeme.timer.core.res.theme.medium
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DefaultErrorScreen(
     modifier: Modifier = Modifier,
@@ -65,18 +69,20 @@ fun DefaultErrorScreen(
 
         if (onRefresh != null) {
             Spacer(modifier = Modifier.height(24.dp))
-            Button(
-                onClick = onRefresh,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = TimerTheme.colors.buttonPrimary,
-                    contentColor = TimerTheme.colors.textPrimary,
-                ),
-            ) {
-                Text(
-                    text = buttonText,
-                    style = TimerTheme.typography.labelLarge.medium(),
-                )
+            CompositionLocalProvider(LocalRippleConfiguration provides null) {
+                Button(
+                    onClick = onRefresh,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TimerTheme.colors.buttonPrimary,
+                        contentColor = TimerTheme.colors.textPrimary,
+                    ),
+                ) {
+                    Text(
+                        text = buttonText,
+                        style = TimerTheme.typography.labelLarge.medium(),
+                    )
+                }
             }
         }
     }

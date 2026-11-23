@@ -13,7 +13,10 @@ fun Modifier.clickableHaptic(
     onClick: () -> Unit,
 ): Modifier = composed {
     val haptic = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
     clickable(
+        interactionSource = interactionSource,
+        indication = null,
         enabled = enabled,
         onClick = {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
