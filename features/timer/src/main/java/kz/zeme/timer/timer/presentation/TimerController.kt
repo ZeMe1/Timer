@@ -6,11 +6,11 @@ interface TimerController {
 
     fun onRefresh()
 
-    fun onHoursDelta(delta: Int)
+    fun onHoursSelected(hours: Int)
 
-    fun onMinutesDelta(delta: Int)
+    fun onMinutesSelected(minutes: Int)
 
-    fun onSecondsDelta(delta: Int)
+    fun onSecondsSelected(seconds: Int)
 
     fun onStartClick()
 

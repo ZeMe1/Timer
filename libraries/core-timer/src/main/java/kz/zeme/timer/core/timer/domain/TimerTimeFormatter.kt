@@ -3,6 +3,8 @@ package kz.zeme.timer.core.timer.domain
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toPersistentList
 
 private const val MS_PER_SECOND = 1_000L
 private const val SECONDS_PER_HOUR = 3_600L
@@ -13,6 +15,21 @@ class TimerTimeFormatter(
 ) {
 
     private val endClockFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+    val hoursWheelItems: ImmutableList<String> =
+        (TimerDuration.MIN_VALUE..TimerDuration.MAX_HOURS)
+            .map(::formatUnit)
+            .toPersistentList()
+
+    val minutesWheelItems: ImmutableList<String> =
+        (TimerDuration.MIN_VALUE..TimerDuration.MAX_MINUTES)
+            .map(::formatUnit)
+            .toPersistentList()
+
+    val secondsWheelItems: ImmutableList<String> =
+        (TimerDuration.MIN_VALUE..TimerDuration.MAX_SECONDS)
+            .map(::formatUnit)
+            .toPersistentList()
 
     fun formatRemaining(remainingMs: Long): String {
         val safeMs = remainingMs.coerceAtLeast(0L)

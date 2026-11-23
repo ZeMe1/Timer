@@ -123,6 +123,12 @@ class DefaultTimerRepositoryTest {
         val endEpoch = Instant.parse("2026-11-23T22:05:00Z").toEpochMilli()
         assertEquals("22:05", formatter.formatEndClock(endEpoch))
         assertEquals("", formatter.formatEndClock(null))
+        assertEquals(24, formatter.hoursWheelItems.size)
+        assertEquals("00", formatter.hoursWheelItems.first())
+        assertEquals("23", formatter.hoursWheelItems.last())
+        assertEquals(60, formatter.minutesWheelItems.size)
+        assertEquals("59", formatter.minutesWheelItems.last())
+        assertEquals(60, formatter.secondsWheelItems.size)
     }
 
     private class FakeTimerAlertManager : TimerAlertManager {

@@ -13,18 +13,13 @@ import kz.zeme.timer.core.observable.EventFlow
 import kz.zeme.timer.core.observable.MutableEventFlow
 import kz.zeme.timer.core.observable.ViewState
 import kz.zeme.timer.core.observable.extensions.update
-import kz.zeme.timer.core.timer.domain.TimerDuration
 import kz.zeme.timer.core.timer.domain.TimerRepository
 import kz.zeme.timer.core.timer.domain.TimerState as DomainTimerState
 import kz.zeme.timer.core.timer.domain.TimerStatus
 import kz.zeme.timer.core.timer.domain.TimerTimeFormatter
-import kz.zeme.timer.timer.presentation.TimerState.WheelColumn
 import kz.zeme.timer.timer.presentation.navigation.TimerNavigation
 
 private const val TICK_INTERVAL_MS = 100L
-private const val HOURS_COUNT = TimerDuration.MAX_HOURS + 1
-private const val MINUTES_COUNT = TimerDuration.MAX_MINUTES + 1
-private const val SECONDS_COUNT = TimerDuration.MAX_SECONDS + 1
 
 open class TimerVM(
     private val timerRepository: TimerRepository,
@@ -44,30 +39,36 @@ open class TimerVM(
 
     override fun onRefresh() = onObserveTimer()
 
-    override fun onHoursDelta(delta: Int) {
+    override fun onHoursSelected(hours: Int) {
         val duration = timerRepository.state.value.configuredDuration
+        if (duration.hours == hours) return
+
         timerRepository.updateDuration(
-            hours = shiftUnit(duration.hours, delta, HOURS_COUNT),
+            hours = hours,
             minutes = duration.minutes,
             seconds = duration.seconds,
         )
     }
 
-    override fun onMinutesDelta(delta: Int) {
+    override fun onMinutesSelected(minutes: Int) {
         val duration = timerRepository.state.value.configuredDuration
+        if (duration.minutes == minutes) return
+
         timerRepository.updateDuration(
             hours = duration.hours,
-            minutes = shiftUnit(duration.minutes, delta, MINUTES_COUNT),
+            minutes = minutes,
             seconds = duration.seconds,
         )
     }
 
-    override fun onSecondsDelta(delta: Int) {
+    override fun onSecondsSelected(seconds: Int) {
         val duration = timerRepository.state.value.configuredDuration
+        if (duration.seconds == seconds) return
+
         timerRepository.updateDuration(
             hours = duration.hours,
             minutes = duration.minutes,
-            seconds = shiftUnit(duration.seconds, delta, SECONDS_COUNT),
+            seconds = seconds,
         )
     }
 
@@ -103,9 +104,12 @@ open class TimerVM(
         _state.value = ViewState.Data(
             TimerState(
                 status = domainState.status,
-                hoursWheel = buildWheelColumn(duration.hours, HOURS_COUNT),
-                minutesWheel = buildWheelColumn(duration.minutes, MINUTES_COUNT),
-                secondsWheel = buildWheelColumn(duration.seconds, SECONDS_COUNT),
+                hoursItems = timeFormatter.hoursWheelItems,
+                minutesItems = timeFormatter.minutesWheelItems,
+                secondsItems = timeFormatter.secondsWheelItems,
+                selectedHours = duration.hours,
+                selectedMinutes = duration.minutes,
+                selectedSeconds = duration.seconds,
                 canStart = !duration.isZero,
                 formattedRemaining = if (isFinished) timeFormatter.formatRemaining(0L)
                                      else timeFormatter.formatRemaining(remaining.remainingMs),
@@ -144,21 +148,4 @@ open class TimerVM(
             )
         }
     }
-
-    private fun buildWheelColumn(
-        value: Int,
-        maxCount: Int,
-    ): WheelColumn = WheelColumn(
-        prev2 = timeFormatter.formatUnit(shiftUnit(value, -2, maxCount)),
-        prev1 = timeFormatter.formatUnit(shiftUnit(value, -1, maxCount)),
-        current = timeFormatter.formatUnit(value),
-        next1 = timeFormatter.formatUnit(shiftUnit(value, 1, maxCount)),
-        next2 = timeFormatter.formatUnit(shiftUnit(value, 2, maxCount)),
-    )
-
-    private fun shiftUnit(
-        value: Int,
-        delta: Int,
-        maxCount: Int,
-    ): Int = Math.floorMod(value + delta, maxCount)
 }

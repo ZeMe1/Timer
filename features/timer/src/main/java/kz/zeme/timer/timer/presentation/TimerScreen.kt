@@ -1,5 +1,8 @@
 package kz.zeme.timer.timer.presentation
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -8,12 +11,19 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.snapping.SnapPosition
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,17 +32,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -42,21 +59,27 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
+import kotlin.math.abs
+import kotlin.math.roundToInt
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
 import kz.zeme.timer.core.error.BaseError
 import kz.zeme.timer.core.error.UnexpectedError
 import kz.zeme.timer.core.observable.ViewState
@@ -68,14 +91,34 @@ import kz.zeme.timer.core.res.theme.medium
 import kz.zeme.timer.core.res.theme.primary
 import kz.zeme.timer.core.res.theme.secondary
 import kz.zeme.timer.core.timer.domain.TimerStatus
+import kz.zeme.timer.core.timer.domain.TimerTimeFormatter
 import kz.zeme.timer.core.ui.components.DefaultErrorScreen
+import kz.zeme.timer.core.ui.extensions.compose.clickableHaptic
 import kz.zeme.timer.core.ui.extensions.compose.clickableWithoutRipple
 import kz.zeme.timer.core.ui.extensions.shimmer
-import kz.zeme.timer.timer.presentation.TimerState.WheelColumn
 
 private const val TABULAR_NUMS_FEATURE = "tnum"
 private const val PROGRESS_ANIMATION_MS = 120
 private const val FINISHED_PULSE_HALF_DURATION_MS = 550
+private const val RING_COLOR_ANIMATION_MS = 250
+private const val MODE_ENTER_DURATION_MS = 320
+private const val MODE_EXIT_DURATION_MS = 220
+private const val ACTIONS_ENTER_DURATION_MS = 220
+private const val ACTIONS_EXIT_DURATION_MS = 160
+private const val WHEEL_COLOR_ANIMATION_MS = 120
+private const val WHEEL_VISIBLE_COUNT = 5
+private const val WHEEL_VIRTUAL_COUNT = 24_000
+private const val WHEEL_VIRTUAL_MIDDLE = 12_000
+private val WHEEL_ITEM_HEIGHT = 48.dp
+private val WHEEL_VIEWPORT_HEIGHT = WHEEL_ITEM_HEIGHT * WHEEL_VISIBLE_COUNT
+private val WHEEL_VERTICAL_PADDING = WHEEL_ITEM_HEIGHT * (WHEEL_VISIBLE_COUNT / 2)
+
+private data class ActiveCountdownSnapshot(
+    val status: TimerStatus = TimerStatus.Running,
+    val formattedRemaining: String = "05:00",
+    val progress: Float = 1f,
+    val endsAtClock: String = "",
+)
 
 @Composable
 internal fun TimerScreen(
@@ -199,6 +242,24 @@ private fun TimerContent(
     data: TimerState,
     controller: TimerController,
 ) {
+    var activeSnapshot by remember {
+        mutableStateOf(
+            ActiveCountdownSnapshot(
+                status = if (data.status == TimerStatus.Idle) TimerStatus.Running else data.status,
+                formattedRemaining = data.formattedRemaining,
+                progress = data.progress,
+                endsAtClock = data.endsAtClock,
+            ),
+        )
+    }
+
+    if (data.status != TimerStatus.Idle) activeSnapshot = ActiveCountdownSnapshot(
+        status = data.status,
+        formattedRemaining = data.formattedRemaining,
+        progress = data.progress,
+        endsAtClock = data.endsAtClock,
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -206,24 +267,49 @@ private fun TimerContent(
             .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 20.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        if (data.status == TimerStatus.Idle) TimerWheelPicker(
+        AnimatedContent(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
-            hoursWheel = data.hoursWheel,
-            minutesWheel = data.minutesWheel,
-            secondsWheel = data.secondsWheel,
-            controller = controller,
-        )
-        else TimerCountdownRing(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            status = data.status,
-            formattedRemaining = data.formattedRemaining,
-            progress = data.progress,
-            endsAtClock = data.endsAtClock,
-        )
+            targetState = data.status == TimerStatus.Idle,
+            transitionSpec = {
+                val enterScale = if (targetState) 1.06f else 0.92f
+                val exitScale = if (targetState) 0.92f else 1.06f
+
+                (
+                    fadeIn(tween(MODE_ENTER_DURATION_MS, easing = FastOutSlowInEasing)) +
+                        scaleIn(
+                            initialScale = enterScale,
+                            animationSpec = tween(MODE_ENTER_DURATION_MS, easing = FastOutSlowInEasing),
+                        )
+                    ) togetherWith (
+                    fadeOut(tween(MODE_EXIT_DURATION_MS, easing = FastOutSlowInEasing)) +
+                        scaleOut(
+                            targetScale = exitScale,
+                            animationSpec = tween(MODE_EXIT_DURATION_MS, easing = FastOutSlowInEasing),
+                        )
+                    ) using SizeTransform(clip = false)
+            },
+            label = "timerModeTransition",
+        ) { isIdle ->
+            if (isIdle) TimerWheelPicker(
+                modifier = Modifier.fillMaxSize(),
+                hoursItems = data.hoursItems,
+                minutesItems = data.minutesItems,
+                secondsItems = data.secondsItems,
+                selectedHours = data.selectedHours,
+                selectedMinutes = data.selectedMinutes,
+                selectedSeconds = data.selectedSeconds,
+                controller = controller,
+            )
+            else TimerCountdownRing(
+                modifier = Modifier.fillMaxSize(),
+                status = activeSnapshot.status,
+                formattedRemaining = activeSnapshot.formattedRemaining,
+                progress = activeSnapshot.progress,
+                endsAtClock = activeSnapshot.endsAtClock,
+            )
+        }
 
         TimerActionsBar(
             status = data.status,
@@ -235,9 +321,12 @@ private fun TimerContent(
 
 @Composable
 private fun TimerWheelPicker(
-    hoursWheel: WheelColumn,
-    minutesWheel: WheelColumn,
-    secondsWheel: WheelColumn,
+    hoursItems: ImmutableList<String>,
+    minutesItems: ImmutableList<String>,
+    secondsItems: ImmutableList<String>,
+    selectedHours: Int,
+    selectedMinutes: Int,
+    selectedSeconds: Int,
     controller: TimerController,
     modifier: Modifier = Modifier,
 ) {
@@ -277,20 +366,23 @@ private fun TimerWheelPicker(
             ) {
                 TimerWheelColumnView(
                     modifier = Modifier.weight(1f),
-                    column = hoursWheel,
-                    onDelta = controller::onHoursDelta,
+                    items = hoursItems,
+                    selectedValue = selectedHours,
+                    onValueSelected = controller::onHoursSelected,
                 )
                 WheelColon()
                 TimerWheelColumnView(
                     modifier = Modifier.weight(1f),
-                    column = minutesWheel,
-                    onDelta = controller::onMinutesDelta,
+                    items = minutesItems,
+                    selectedValue = selectedMinutes,
+                    onValueSelected = controller::onMinutesSelected,
                 )
                 WheelColon()
                 TimerWheelColumnView(
                     modifier = Modifier.weight(1f),
-                    column = secondsWheel,
-                    onDelta = controller::onSecondsDelta,
+                    items = secondsItems,
+                    selectedValue = selectedSeconds,
+                    onValueSelected = controller::onSecondsSelected,
                 )
             }
         }
@@ -330,111 +422,194 @@ private fun WheelColon() {
 
 @Composable
 private fun TimerWheelColumnView(
-    column: WheelColumn,
-    onDelta: (Int) -> Unit,
+    items: ImmutableList<String>,
+    selectedValue: Int,
+    onValueSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val haptic = LocalHapticFeedback.current
-    val stepThresholdPx = with(LocalDensity.current) { 36.dp.toPx() }
-    val currentOnDelta by rememberUpdatedState(onDelta)
-    var accumulatedDrag by remember { mutableFloatStateOf(0f) }
+    if (items.isEmpty()) return
 
-    Column(
-        modifier = modifier.pointerInput(Unit) {
-            detectVerticalDragGestures(
-                onDragEnd = { accumulatedDrag = 0f },
-                onDragCancel = { accumulatedDrag = 0f },
-            ) { change, dragAmount ->
-                change.consume()
-                accumulatedDrag += dragAmount
-                val steps = (-accumulatedDrag / stepThresholdPx).toInt()
-                if (steps != 0) {
-                    accumulatedDrag += steps * stepThresholdPx
+    val count = items.size
+    val middleBase = WHEEL_VIRTUAL_MIDDLE - (WHEEL_VIRTUAL_MIDDLE % count)
+    val initialIndex = middleBase + selectedValue.coerceIn(0, count - 1)
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
+    val snapFlingBehavior = rememberSnapFlingBehavior(
+        lazyListState = listState,
+        snapPosition = SnapPosition.Center,
+    )
+    val coroutineScope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    val itemHeightPx = with(LocalDensity.current) { WHEEL_ITEM_HEIGHT.toPx() }
+    val currentSelectedValue by rememberUpdatedState(selectedValue)
+    val currentOnValueSelected by rememberUpdatedState(onValueSelected)
+
+    val centeredIndex by remember(listState, initialIndex, itemHeightPx) {
+        derivedStateOf {
+            listState.findCenteredIndexOrNull(itemHeightPx) ?: initialIndex
+        }
+    }
+
+    LaunchedEffect(listState, count, itemHeightPx) {
+        snapshotFlow { listState.findCenteredIndexOrNull(itemHeightPx) }
+            .filterNotNull()
+            .distinctUntilChanged()
+            .collect { index ->
+                val resolvedValue = Math.floorMod(index, count)
+                if (resolvedValue != currentSelectedValue) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    currentOnDelta(steps)
+                    currentOnValueSelected(resolvedValue)
                 }
             }
-        },
+    }
+
+    LaunchedEffect(selectedValue, count, itemHeightPx) {
+        if (listState.isScrollInProgress) return@LaunchedEffect
+
+        val currentCenter = listState.findCenteredIndexOrNull(itemHeightPx) ?: initialIndex
+        if (Math.floorMod(currentCenter, count) != selectedValue)
+            listState.scrollToItem(middleBase + selectedValue.coerceIn(0, count - 1))
+    }
+
+    LazyColumn(
+        modifier = modifier.height(WHEEL_VIEWPORT_HEIGHT),
+        state = listState,
+        contentPadding = PaddingValues(vertical = WHEEL_VERTICAL_PADDING),
+        flingBehavior = snapFlingBehavior,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        WheelStepText(
-            text = column.prev2,
-            height = 30.dp,
-            fontSize = 18.sp,
-            alpha = 0.18f,
-            onClick = { onDelta(-2) },
+        timerWheelItemsSection(
+            items = items,
+            listState = listState,
+            initialIndex = initialIndex,
+            centeredIndexProvider = { centeredIndex },
+            itemHeightPx = itemHeightPx,
+            onItemClick = { virtualIndex ->
+                coroutineScope.launch {
+                    listState.animateScrollToItem(virtualIndex)
+                }
+            },
         )
-        WheelStepText(
-            text = column.prev1,
-            height = 40.dp,
-            fontSize = 26.sp,
-            alpha = 0.42f,
-            onClick = { onDelta(-1) },
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = column.current,
-                style = TimerTheme.typography.titleLarge.primary().copy(
-                    fontSize = 50.sp,
-                    lineHeight = 56.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = (-0.02).em,
-                    fontFeatureSettings = TABULAR_NUMS_FEATURE,
-                ),
-            )
-        }
-        WheelStepText(
-            text = column.next1,
-            height = 40.dp,
-            fontSize = 26.sp,
-            alpha = 0.42f,
-            onClick = { onDelta(1) },
-        )
-        WheelStepText(
-            text = column.next2,
-            height = 30.dp,
-            fontSize = 18.sp,
-            alpha = 0.18f,
-            onClick = { onDelta(2) },
+    }
+}
+
+private fun LazyListScope.timerWheelItemsSection(
+    items: ImmutableList<String>,
+    listState: LazyListState,
+    initialIndex: Int,
+    centeredIndexProvider: () -> Int,
+    itemHeightPx: Float,
+    onItemClick: (Int) -> Unit,
+) {
+    val count = items.size
+    items(count = WHEEL_VIRTUAL_COUNT) { virtualIndex ->
+        TimerWheelItem(
+            label = items[virtualIndex % count],
+            virtualIndex = virtualIndex,
+            initialIndex = initialIndex,
+            listState = listState,
+            centeredIndexProvider = centeredIndexProvider,
+            itemHeightPx = itemHeightPx,
+            onClick = { onItemClick(virtualIndex) },
         )
     }
 }
 
 @Composable
-private fun WheelStepText(
-    text: String,
-    height: Dp,
-    fontSize: TextUnit,
-    alpha: Float,
+private fun TimerWheelItem(
+    label: String,
+    virtualIndex: Int,
+    initialIndex: Int,
+    listState: LazyListState,
+    centeredIndexProvider: () -> Int,
+    itemHeightPx: Float,
     onClick: () -> Unit,
 ) {
-    val haptic = LocalHapticFeedback.current
+    val isCentered by remember(virtualIndex) {
+        derivedStateOf { centeredIndexProvider() == virtualIndex }
+    }
+    val textColor by animateColorAsState(
+        targetValue = if (isCentered) TimerTheme.colors.textPrimary else TimerTheme.colors.textSecondary,
+        animationSpec = tween(durationMillis = WHEEL_COLOR_ANIMATION_MS),
+        label = "wheelItemColor",
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(height)
-            .clickableWithoutRipple {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onClick()
+            .height(WHEEL_ITEM_HEIGHT)
+            .clickableWithoutRipple(onClick = onClick)
+            .graphicsLayer {
+                val distance = listState.getDistanceFromCenter(
+                    virtualIndex = virtualIndex,
+                    initialIndex = initialIndex,
+                    fallbackItemHeightPx = itemHeightPx,
+                )
+                val scale = when {
+                    distance <= 1f -> lerp(1f, 0.52f, distance)
+                    distance <= 2f -> lerp(0.52f, 0.36f, distance - 1f)
+                    else -> 0.36f
+                }
+                val itemAlpha = when {
+                    distance <= 1f -> lerp(1f, 0.42f, distance)
+                    distance <= 2f -> lerp(0.42f, 0.18f, distance - 1f)
+                    distance <= 2.5f -> lerp(0.18f, 0f, (distance - 2f) * 2f)
+                    else -> 0f
+                }
+
+                scaleX = scale
+                scaleY = scale
+                alpha = itemAlpha
             },
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            modifier = Modifier.alpha(alpha),
-            text = text,
-            style = TimerTheme.typography.bodyLarge.secondary().copy(
-                fontSize = fontSize,
-                fontWeight = FontWeight.Normal,
+            modifier = Modifier.wrapContentHeight(unbounded = true),
+            text = label,
+            style = TimerTheme.typography.titleLarge.copy(
+                color = textColor,
+                fontSize = 50.sp,
+                lineHeight = 52.sp,
+                fontWeight = if (isCentered) FontWeight.Medium else FontWeight.Normal,
+                letterSpacing = (-0.02).em,
                 fontFeatureSettings = TABULAR_NUMS_FEATURE,
+                platformStyle = PlatformTextStyle(includeFontPadding = false),
             ),
         )
     }
+}
+
+private fun LazyListState.findCenteredIndexOrNull(
+    fallbackItemHeightPx: Float,
+): Int? {
+    val info = layoutInfo
+    val visibleItems = info.visibleItemsInfo
+    if (visibleItems.isEmpty()) return null
+
+    val viewportCenter = (info.viewportStartOffset + info.viewportEndOffset) / 2f
+    val anchor = visibleItems[0]
+    val itemSize = if (anchor.size > 0) anchor.size.toFloat() else fallbackItemHeightPx
+    if (itemSize <= 0f) return anchor.index
+
+    val centerOffset = (viewportCenter - anchor.offset - itemSize / 2f) / itemSize
+    return anchor.index + centerOffset.roundToInt()
+}
+
+private fun LazyListState.getDistanceFromCenter(
+    virtualIndex: Int,
+    initialIndex: Int,
+    fallbackItemHeightPx: Float,
+): Float {
+    val info = layoutInfo
+    val visibleItems = info.visibleItemsInfo
+    if (visibleItems.isEmpty()) return abs(virtualIndex - initialIndex).toFloat()
+
+    val viewportCenter = (info.viewportStartOffset + info.viewportEndOffset) / 2f
+    val anchor = visibleItems[0]
+    val itemSize = if (anchor.size > 0) anchor.size.toFloat() else fallbackItemHeightPx
+    if (itemSize <= 0f) return abs(virtualIndex - initialIndex).toFloat()
+
+    val itemCenter = anchor.offset + (virtualIndex - anchor.index) * itemSize + itemSize / 2f
+    return abs(itemCenter - viewportCenter) / itemSize
 }
 
 @Composable
@@ -457,11 +632,14 @@ private fun TimerCountdownRing(
         if (status == TimerStatus.Finished) rememberFinishedRingAlpha()
         else 1f
     val trackColor = TimerTheme.colors.buttonDisabled
-    val progressColor = when (status) {
-        TimerStatus.Paused -> TimerTheme.colors.basicGray
-        TimerStatus.Finished -> TimerTheme.colors.textPrimary.copy(alpha = ringAlpha)
-        else -> TimerTheme.colors.textPrimary
-    }
+    val animatedStrokeColor by animateColorAsState(
+        targetValue = if (status == TimerStatus.Paused) TimerTheme.colors.basicGray else TimerTheme.colors.textPrimary,
+        animationSpec = tween(durationMillis = RING_COLOR_ANIMATION_MS, easing = FastOutSlowInEasing),
+        label = "timerRingColor",
+    )
+    val progressColor =
+        if (status == TimerStatus.Finished) animatedStrokeColor.copy(alpha = ringAlpha)
+        else animatedStrokeColor
 
     Box(
         modifier = modifier,
@@ -574,69 +752,90 @@ private fun TimerActionsBar(
     controller: TimerController,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    AnimatedContent(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        when (status) {
-            TimerStatus.Idle -> TimerActionButton(
-                modifier = Modifier.weight(1f),
-                text = stringResource(R.string.timer_start),
-                containerColor = TimerTheme.colors.textPrimary,
-                contentColor = TimerTheme.colors.mainBg,
-                enabled = canStart,
-                onClick = controller::onStartClick,
-            )
-
-            TimerStatus.Running -> {
-                TimerActionButton(
+        targetState = status,
+        transitionSpec = {
+            (
+                fadeIn(tween(ACTIONS_ENTER_DURATION_MS, easing = FastOutSlowInEasing)) +
+                    scaleIn(
+                        initialScale = 0.96f,
+                        animationSpec = tween(ACTIONS_ENTER_DURATION_MS, easing = FastOutSlowInEasing),
+                    )
+                ) togetherWith (
+                fadeOut(tween(ACTIONS_EXIT_DURATION_MS, easing = FastOutSlowInEasing)) +
+                    scaleOut(
+                        targetScale = 0.96f,
+                        animationSpec = tween(ACTIONS_EXIT_DURATION_MS, easing = FastOutSlowInEasing),
+                    )
+                ) using SizeTransform(clip = false)
+        },
+        label = "timerActionsTransition",
+    ) { targetStatus ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            when (targetStatus) {
+                TimerStatus.Idle -> TimerActionButton(
                     modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.timer_reset),
-                    containerColor = TimerTheme.colors.buttonSecondary,
-                    contentColor = TimerTheme.colors.textPrimary,
-                    onClick = controller::onResetClick,
-                )
-                TimerActionButton(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.timer_pause),
-                    containerColor = TimerTheme.colors.buttonPrimary,
-                    contentColor = TimerTheme.colors.textPrimary,
-                    onClick = controller::onPauseClick,
-                )
-            }
-
-            TimerStatus.Paused -> {
-                TimerActionButton(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.timer_reset),
-                    containerColor = TimerTheme.colors.buttonSecondary,
-                    contentColor = TimerTheme.colors.textPrimary,
-                    onClick = controller::onResetClick,
-                )
-                TimerActionButton(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.timer_resume),
+                    text = stringResource(R.string.timer_start),
                     containerColor = TimerTheme.colors.textPrimary,
                     contentColor = TimerTheme.colors.mainBg,
-                    onClick = controller::onResumeClick,
+                    enabled = canStart,
+                    onClick = controller::onStartClick,
                 )
-            }
 
-            TimerStatus.Finished -> {
-                TimerActionButton(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.timer_repeat),
-                    containerColor = TimerTheme.colors.buttonSecondary,
-                    contentColor = TimerTheme.colors.textPrimary,
-                    onClick = controller::onRepeatClick,
-                )
-                TimerActionButton(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.timer_done),
-                    containerColor = TimerTheme.colors.textPrimary,
-                    contentColor = TimerTheme.colors.mainBg,
-                    onClick = controller::onDoneClick,
-                )
+                TimerStatus.Running -> {
+                    TimerActionButton(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(R.string.timer_reset),
+                        containerColor = TimerTheme.colors.buttonSecondary,
+                        contentColor = TimerTheme.colors.textPrimary,
+                        onClick = controller::onResetClick,
+                    )
+                    TimerActionButton(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(R.string.timer_pause),
+                        containerColor = TimerTheme.colors.buttonPrimary,
+                        contentColor = TimerTheme.colors.textPrimary,
+                        onClick = controller::onPauseClick,
+                    )
+                }
+
+                TimerStatus.Paused -> {
+                    TimerActionButton(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(R.string.timer_reset),
+                        containerColor = TimerTheme.colors.buttonSecondary,
+                        contentColor = TimerTheme.colors.textPrimary,
+                        onClick = controller::onResetClick,
+                    )
+                    TimerActionButton(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(R.string.timer_resume),
+                        containerColor = TimerTheme.colors.textPrimary,
+                        contentColor = TimerTheme.colors.mainBg,
+                        onClick = controller::onResumeClick,
+                    )
+                }
+
+                TimerStatus.Finished -> {
+                    TimerActionButton(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(R.string.timer_repeat),
+                        containerColor = TimerTheme.colors.buttonSecondary,
+                        contentColor = TimerTheme.colors.textPrimary,
+                        onClick = controller::onRepeatClick,
+                    )
+                    TimerActionButton(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(R.string.timer_done),
+                        containerColor = TimerTheme.colors.textPrimary,
+                        contentColor = TimerTheme.colors.mainBg,
+                        onClick = controller::onDoneClick,
+                    )
+                }
             }
         }
     }
@@ -651,26 +850,28 @@ private fun TimerActionButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val haptic = LocalHapticFeedback.current
-    Button(
-        modifier = modifier.height(54.dp),
-        onClick = {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            onClick()
-        },
-        enabled = enabled,
-        shape = RoundedCornerShape(14.dp),
-        elevation = null,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor,
-            contentColor = contentColor,
-            disabledContainerColor = TimerTheme.colors.buttonDisabled,
-            disabledContentColor = TimerTheme.colors.textPrimary.copy(alpha = ContentAlpha.disabled),
-        ),
+    val actualContainerColor =
+        if (enabled) containerColor
+        else TimerTheme.colors.buttonDisabled
+    val actualContentColor =
+        if (enabled) contentColor
+        else TimerTheme.colors.textPrimary.copy(alpha = ContentAlpha.disabled)
+
+    Box(
+        modifier = modifier
+            .height(54.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(actualContainerColor)
+            .clickableHaptic(
+                enabled = enabled,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
             style = TimerTheme.typography.bodyLarge.copy(
+                color = actualContentColor,
                 fontWeight = FontWeight.SemiBold,
             ),
         )
@@ -680,9 +881,9 @@ private fun TimerActionButton(
 private val timerControllerStub = object : TimerController {
     override fun onStart() = Unit
     override fun onRefresh() = Unit
-    override fun onHoursDelta(delta: Int) = Unit
-    override fun onMinutesDelta(delta: Int) = Unit
-    override fun onSecondsDelta(delta: Int) = Unit
+    override fun onHoursSelected(hours: Int) = Unit
+    override fun onMinutesSelected(minutes: Int) = Unit
+    override fun onSecondsSelected(seconds: Int) = Unit
     override fun onStartClick() = Unit
     override fun onPauseClick() = Unit
     override fun onResumeClick() = Unit
@@ -691,8 +892,23 @@ private val timerControllerStub = object : TimerController {
     override fun onDoneClick() = Unit
 }
 
+private val timerPreviewFormatter = TimerTimeFormatter()
+
+private val timerIdleStateStub = TimerState(
+    status = TimerStatus.Idle,
+    hoursItems = timerPreviewFormatter.hoursWheelItems,
+    minutesItems = timerPreviewFormatter.minutesWheelItems,
+    secondsItems = timerPreviewFormatter.secondsWheelItems,
+    selectedHours = 0,
+    selectedMinutes = 5,
+    selectedSeconds = 0,
+)
+
 private val timerRunningStateStub = TimerState(
     status = TimerStatus.Running,
+    hoursItems = timerPreviewFormatter.hoursWheelItems,
+    minutesItems = timerPreviewFormatter.minutesWheelItems,
+    secondsItems = timerPreviewFormatter.secondsWheelItems,
     formattedRemaining = "03:18",
     progress = 0.66f,
     endsAtClock = "22:05",
@@ -710,7 +926,7 @@ private class TimerScreenPreviewParameterProvider :
             state = ViewState.Data(timerRunningStateStub),
         ),
         TimerScreenPreviewParameter(
-            state = ViewState.Data(TimerState()),
+            state = ViewState.Data(timerIdleStateStub),
         ),
         TimerScreenPreviewParameter(
             state = ViewState.Loading.Skeleton(),
