@@ -44,6 +44,10 @@ val appModule = module {
     single {
         AppGlobalNavigator(
             activityProvider = get(),
+            mainRouter = get(),
+            stopwatchRouter = get(),
+            timerRouter = get(),
+            worldClockRouter = get(),
             languagePickerRouter = get(),
             themePickerRouter = get(),
             cityPickerRouter = get(),

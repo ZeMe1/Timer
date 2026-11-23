@@ -2,9 +2,11 @@ package kz.zeme.timer.features.navigation
 
 import android.content.Intent
 import androidx.core.net.toUri
+import androidx.fragment.app.commit
 import kz.zeme.timer.MainActivity
 import kz.zeme.timer.core.activity.ActivityProvider
 import kz.zeme.timer.core.activity.extensions.makeToast
+import kz.zeme.timer.core.fragment.BaseFragment
 import kz.zeme.timer.core.fragment.extensions.isShown
 import kz.zeme.timer.core.locale.view.presentation.navigation.LanguagePickerNavigation
 import kz.zeme.timer.core.locale.view.presentation.navigation.LanguagePickerRouter
@@ -12,13 +14,26 @@ import kz.zeme.timer.core.navigation.BaseNavigation
 import kz.zeme.timer.core.navigation.ExternalModulesNavigator
 import kz.zeme.timer.core.navigation.Navigator
 import kz.zeme.timer.core.navigation.extensions.putRedirect
+import kz.zeme.timer.core.res.R as CoreResR
 import kz.zeme.timer.core.theme.view.presentation.navigation.ThemePickerNavigation
 import kz.zeme.timer.core.theme.view.presentation.navigation.ThemePickerRouter
 import kz.zeme.timer.core.world.clock.view.presentation.navigation.CityPickerNavigation
 import kz.zeme.timer.core.world.clock.view.presentation.navigation.CityPickerRouter
+import kz.zeme.timer.main.presentation.MainTab
+import kz.zeme.timer.main.presentation.navigation.MainExternalNavigation
+import kz.zeme.timer.main.presentation.navigation.MainRouter
+import kz.zeme.timer.splash.SplashExternalNavigation
+import kz.zeme.timer.splash.SplashFragment
+import kz.zeme.timer.stopwatch.presentation.navigation.StopwatchRouter
+import kz.zeme.timer.timer.presentation.navigation.TimerRouter
+import kz.zeme.timer.world.clock.presentation.navigation.WorldClockRouter
 
 class AppGlobalNavigator(
     private val activityProvider: ActivityProvider,
+    private val mainRouter: MainRouter,
+    private val stopwatchRouter: StopwatchRouter,
+    private val timerRouter: TimerRouter,
+    private val worldClockRouter: WorldClockRouter,
     private val languagePickerRouter: LanguagePickerRouter,
     private val themePickerRouter: ThemePickerRouter,
     private val cityPickerRouter: CityPickerRouter,
@@ -26,6 +41,8 @@ class AppGlobalNavigator(
 
     override fun navigate(navigation: Navigator.Navigation) = when (navigation) {
         is BaseNavigation.ShowMain -> showMain(navigation)
+        is SplashExternalNavigation.ShowNextScreen -> showNextScreen(navigation)
+        is MainExternalNavigation.SelectTab -> selectTab(navigation)
         is LanguagePickerNavigation.OpenLanguagePicker -> openLanguagePicker()
         is ThemePickerNavigation.OpenThemePicker -> openThemePicker()
         is CityPickerNavigation.OpenCityPicker -> openCityPicker()
@@ -49,7 +66,83 @@ class AppGlobalNavigator(
             return
         }
 
+        val fm = activity.supportFragmentManager
+
+        if (navigation.withSplash) {
+            val hasSplash = fm.fragments
+                .filterIsInstance<SplashFragment>()
+                .isNotEmpty()
+
+            if (hasSplash) return
+
+            fm.commit {
+                setReorderingAllowed(true)
+                replace(CoreResR.id.fragment_container_view, SplashFragment())
+            }
+            return
+        }
+
+        val tag = MainRouter.TAG_MAIN
+        val existingFragment = fm.findFragmentByTag(tag)
+
+        if (existingFragment == null) {
+            fm.commit {
+                setReorderingAllowed(true)
+                replace(
+                    CoreResR.id.fragment_container_view,
+                    mainRouter.getMainFragment(),
+                    tag,
+                )
+            }
+        }
+
         navigation.redirect?.let(::navigate)
+    }
+
+    private fun showNextScreen(navigation: SplashExternalNavigation.ShowNextScreen) {
+        val redirect = (navigation.redirect as? BaseNavigation.ShowMain)?.redirect ?: navigation.redirect
+        showMain(
+            BaseNavigation.ShowMain(
+                restart = false,
+                redirect = redirect,
+                withSplash = false,
+            ),
+        )
+    }
+
+    private fun selectTab(navigation: MainExternalNavigation.SelectTab) {
+        val mainFragment = activityProvider.currentActivity
+            ?.supportFragmentManager
+            ?.findFragmentByTag(MainRouter.TAG_MAIN)
+            ?: return
+
+        val childFm = mainFragment.childFragmentManager
+        val targetTag = when (navigation.tab) {
+            MainTab.Stopwatch -> StopwatchRouter.TAG_STOPWATCH
+            MainTab.Timer -> TimerRouter.TAG_TIMER
+            MainTab.WorldClock -> WorldClockRouter.TAG_WORLD_CLOCK
+        }
+
+        childFm.commit {
+            setReorderingAllowed(true)
+            childFm.fragments
+                .filter { it.tag != targetTag }
+                .forEach(::hide)
+
+            val existing = childFm.findFragmentByTag(targetTag)
+            if (existing != null) show(existing)
+            else add(
+                CoreResR.id.main_tab_container_view,
+                createTabFragment(navigation.tab),
+                targetTag,
+            )
+        }
+    }
+
+    private fun createTabFragment(tab: MainTab): BaseFragment = when (tab) {
+        MainTab.Stopwatch -> stopwatchRouter.getStopwatchFragment()
+        MainTab.Timer -> timerRouter.getTimerFragment()
+        MainTab.WorldClock -> worldClockRouter.getWorldClockFragment()
     }
 
     private fun openLanguagePicker() {
